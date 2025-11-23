@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # Tool-Calling Agent API
+  agent-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: tool-calling-agent
+    ports:
+      - "8000:8000"
+    environment:
+      # Application Settings
+      - APP_NAME=tool-calling-agent
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+
+      # LLM Provider Configuration
+      - DEFAULT_LLM_PROVIDER=${DEFAULT_LLM_PROVIDER:-openai}
+
+      # OpenAI Configuration
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4-turbo-preview}
+
+      # Anthropic Configuration
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-3-5-sonnet-20241022}
+
+      # Agent Configuration
+      - MAX_TOOL_CALLS_PER_TURN=${MAX_TOOL_CALLS_PER_TURN:-5}
+      - TOOL_CALL_TIMEOUT_SECONDS=${TOOL_CALL_TIMEOUT_SECONDS:-30}
+      - ENABLE_TOOL_VALIDATION=${ENABLE_TOOL_VALIDATION:-true}
+
+      # API Configuration
+      - API_V1_PREFIX=/api/v1
+      - CORS_ORIGINS=["http://localhost:3000"]
+    volumes:
+      # Mount logs directory (optional)
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - agent-network
+
+networks:
+  agent-network:
+    driver: bridge
+
+# Optional: Add a reverse proxy with Nginx
+# Uncomment the following to add Nginx reverse proxy
+#  nginx:
+#    image: nginx:alpine
+#    container_name: tool-calling-agent-nginx
+#    ports:
+#      - "80:80"
+#      - "443:443"
+#    volumes:
+#      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+#      - ./certs:/etc/nginx/certs:ro
+#    depends_on:
+#      - agent-api
+#    networks:
+#      - agent-network
